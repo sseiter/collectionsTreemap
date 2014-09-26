@@ -1,0 +1,96 @@
+setwd("~/Desktop/Collections Inventory")
+sciCol<-read.csv("sci_collect.csv")
+
+#Split off lapidary and geology collection
+geology<-subset(sciCol, collection=="Geology")
+lapidary<-subset(sciCol, collection=="Lapidary")
+misc<-subset(sciCol, collection=="Miscellaneous")
+empty<-subset(sciCol, collection=="")
+#photo<-subset(sciCol, collection=="Photo")
+art<-subset(sciCol, collection=="Fine Art")
+
+#Remove the snuff bottles, fine art, geology,  lapidary, empty fields, and msicellaneous stuff from the data set
+sciNoPhoto<-sciCol[sciCol$collection!= "Photo",]
+sciNoPhoto2<-sciNoPhoto[sciNoPhoto$collection!= "Snuff Bottles",]
+sciNoPhoto3<-sciNoPhoto2[sciNoPhoto2$collection!= "Fine Art",]
+sciNoPhoto4<-sciNoPhoto3[sciNoPhoto3$collection!= "Geology",]
+sciNoPhoto5<-sciNoPhoto4[sciNoPhoto4$collection!= "Lapidary",]
+sciNoPhoto6<-sciNoPhoto5[sciNoPhoto5$collection!= "",]
+sciNoPhoto7<-sciNoPhoto6[sciNoPhoto6$collection!= "Miscellaneous",]
+
+#Replace the taxon field with data from synopsis
+geology$taxon<-geology$synopsis
+lapidary$taxon<-lapidary$synopsis
+art$taxon<-art$synopsis
+#photo$taxon<-photo$synopsis
+
+#Convert Taxon names to lower case
+geology$taxon<-tolower(geology$taxon)
+lapidary$taxon<-tolower(lapidary$taxon)
+sciNoPhoto7$taxon<-tolower(sciNoPhoto7$taxon)
+
+
+#Create Count Variable By Taxon and mount type (how many species per genus and how are each of those specimens preserved)
+noPhoto<-data.frame(aggregate(species~taxon*MountType + collection, data=sciNoPhoto7, FUN="length"))
+geoTree<-data.frame(aggregate(species~taxon*MountType + collection, data=geology, FUN="length"))
+lapTree<-data.frame(aggregate(species~taxon*MountType + collection, data=lapidary, FUN="length"))
+artTree<-data.frame(aggregate(species~taxon*MountType + collection, data=art, FUN="length"))
+#photoTree<-data.frame(aggregate(species~taxon + collection, data=photo, FUN="length"))
+
+#Bind Together The four Categories
+sci<-rbind(noPhoto, geoTree, lapTree, artTree)
+specimens<-sci
+specimens<- specimens[with(specimens, order(collection)), ]
+
+#Create a vevtor of colors to fill the treemap
+treePal<-c("#8dd3c7", "sienna1", "#bebada", "#fb8072", "#80b1d3", "#fdb462", "#b3de69", "#fccde5", "darkseagreen", "#bc80bd", "#ccebc5", "#ffed6f", "#8da0cb")
+
+#Print the tree map to a TIFF file
+treeMapofNSCollect<-tiff(filename = "TreeMapCollections.tiff", width = 10, height = 16, units = "in",  res = 1200)
+treemap(specimens,  index=c("collection", "taxon"), vSize="species", vColor='collection',type="index",  border.lwds = c(3, 0.25), border.col = c("white", "white", "black"), lowerbound.cex.labels=0.2, palette="Set3")
+dev.off()
+
+#Bird Mount Type Tree Map
+birds<-subset(specimens, collection=="Ornithology")
+birds$MountType<-str_trim(birds$MountType)
+birds$MountType<-as.factor(birds$MountType)
+birds$taxon<-toupper(birds$taxon)
+birdsTreeMap<-tiff(filename = "BirdTreemap.tiff", width = 10, height = 16, units = "in",  res = 1200)
+birdMap<-treemap(birds,  index=c("taxon", "MountType"), vSize="species", vColor='collection',type="index",  
+                 border.lwds = c(3, 0.25), border.col = c("white", "black"), fontcolor.labels=c("gray20", "white"), lowerbound.cex.labels=0.2, palette="Blues")
+dev.off()
+
+#Mammals Mount Type Tree Map
+mammals<-subset(specimens, collection=="Mammalogy")
+mammals$MountType<-str_trim(mammals$MountType)
+mammals$MountType<-as.factor(mammals$MountType)
+mammals$taxon<-toupper(mammals$taxon)
+mammalsTreeMap<-tiff(filename = "MammalTreemap.tiff", width = 10, height = 16, units = "in",  res = 1200)
+birdMap<-treemap(mammals,  index=c("taxon", "MountType"), vSize="species", vColor='collection',type="index",  
+                 border.lwds = c(3, 0.25), border.col = c("white", "black"), fontcolor.labels=c("gray20", "white"), lowerbound.cex.labels=0.2, palette="Reds")
+dev.off()
+
+#Bugs Mount Type Tree Map
+bugs<-subset(specimens, collection=="Entomology")
+bugs$MountType<-str_trim(bugs$MountType)
+bugs$MountType<-as.factor(bugs$MountType)
+bugs$taxon<-toupper(bugs$taxon)
+bugsTreeMap<-tiff(filename = "BugTreemap.tiff", width = 10, height = 16, units = "in",  res = 1200)
+birdMap<-treemap(bugs,  index=c("taxon", "MountType"), vSize="species", vColor='collection',type="index",  
+                 border.lwds = c(3, 0.25), border.col = c("white", "black"), fontcolor.labels=c("gray20", "white"), lowerbound.cex.labels=0.2, palette="Oranges")
+dev.off()
+
+#Fish Mount Type Tree Map
+fish<-subset(specimens, collection=="Icthyology")
+fish$MountType<-str_trim(fish$MountType)
+fish$MountType<-as.factor(fish$MountType)
+fish$taxon<-toupper(fish$taxon)
+fishTreeMap<-tiff(filename = "MammalTreemap.tiff", width = 10, height = 16, units = "in",  res = 1200)
+birdMap<-treemap(fish,  index=c("taxon", "MountType"), vSize="species", vColor='collection',type="index",  
+                 border.lwds = c(3, 0.25), border.col = c("white", "black"), fontcolor.labels=c("gray20", "white"), lowerbound.cex.labels=0.2, palette="Greens")
+dev.off()
+
+#Histogram of Collections
+HistPlot<-qplot(collection, data=specimens, geom="histogram", fill=collection)
+HistPlot<-HistPlot + scale_fill_manual(values=treePal) + theme_bw()
+HistPlot
